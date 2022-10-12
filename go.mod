@@ -1,4 +1,4 @@
-module github.com/pkg/sftp
+module github.com/nevun/sftp
 
 go 1.15
 
