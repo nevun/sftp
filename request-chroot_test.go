@@ -1,3 +1,4 @@
+//go:build !plan9
 // +build !plan9
 
 package sftp
@@ -30,13 +31,15 @@ func getChrootTuple(t *testing.T) (string, ClientWrapper) {
 	cr, sw := io.Pipe()
 	sr, cw := io.Pipe()
 
+	chroot, handlers := ChrootHandler(sftpRoot)
 	server := NewRequestServer(struct {
 		io.Reader
 		io.WriteCloser
-	}{sr, sw}, ChrootHandler(sftpRoot))
+	}{sr, sw}, handlers)
 	go func() {
 		err := server.Serve()
 		assert.ErrorIs(t, err, io.EOF)
+		assert.NoError(t, chroot.Err)
 	}()
 	// NewClientPipe() will hung up until server.Serve(),
 	// make sure start server first
