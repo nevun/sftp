@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"os"
+        "log"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -90,7 +91,10 @@ type CheckedFile struct {
 func (f *CheckedFile) Write(b []byte) (n int, err error) {
 	du := NewDiskUsage(f.fs.rootPath)
 	if uint64(len(b)) > du.Available() {
-		f.fs.TransferError(os.ErrDeadlineExceeded)
+		if f.fs.Err == nil {
+			log.Printf("aborting write of %v, disk almost full", f.file.Name())
+			f.fs.TransferError(errors.New("Out of disk space, aborting write"))
+		}
 		return 0, os.ErrInvalid
 	}
 	return f.file.Write(b)
@@ -99,7 +103,10 @@ func (f *CheckedFile) Write(b []byte) (n int, err error) {
 func (f *CheckedFile) WriteAt(b []byte, off int64) (n int, err error) {
 	du := NewDiskUsage(f.fs.rootPath)
 	if uint64(len(b)) > du.Available() {
-		f.fs.TransferError(os.ErrDeadlineExceeded)
+		if f.fs.Err == nil {
+			log.Printf("aborting write of %v, disk almost full", f.file.Name())
+			f.fs.TransferError(errors.New("Out of disk space, aborting write"))
+		}
 		return 0, os.ErrInvalid
 	}
 	return f.file.Write(b)
@@ -108,7 +115,10 @@ func (f *CheckedFile) WriteAt(b []byte, off int64) (n int, err error) {
 func (f *CheckedFile) WriterAtReaderAt(b []byte, off int64) (n int, err error) {
 	du := NewDiskUsage(f.fs.rootPath)
 	if uint64(len(b)) > du.Available() {
-		f.fs.TransferError(os.ErrDeadlineExceeded)
+		if f.fs.Err == nil {
+			log.Printf("aborting write of %v, disk almost full", f.file.Name())
+			f.fs.TransferError(errors.New("Out of disk space, aborting write"))
+		}
 		return 0, os.ErrInvalid
 	}
 	return f.file.Write(b)
@@ -121,7 +131,10 @@ func (f *CheckedFile) ReadAt(b []byte, off int64) (n int, err error) {
 func (fs *chroot) Filewrite(r *Request) (io.WriterAt, error) {
 	du := NewDiskUsage(fs.rootPath)
 	if du.Available() < (1024 * 1024 * 1024) {
-		fs.TransferError(os.ErrDeadlineExceeded)
+		if fs.Err == nil {
+			log.Printf("aborting write of %v, disk almost full", r.Filepath)
+			fs.TransferError(errors.New("Out of disk space, aborting write of " + r.Filepath))
+		}
 		return nil, os.ErrInvalid
 	}
 	if r.Flags&sshFxfWrite == 0 {
